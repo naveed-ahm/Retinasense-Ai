@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: retinasense-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: retinasense
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retinasense_secret}
+      POSTGRES_DB: retinasense
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retinasense -d retinasense"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - retinasense-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: retinasense-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql://retinasense:${POSTGRES_PASSWORD:-retinasense_secret}@postgres:5432/retinasense
+      DEBUG: "${DEBUG:-false}"
+      SECRET_KEY: "${SECRET_KEY:-retinasense-secret-key-change-in-production}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-[\"http://localhost:5173\",\"http://localhost:3000\",\"http://frontend:80\"]}"
+    volumes:
+      - uploads_data:/app/uploads
+      - reports_data:/app/reports
+      - model_data:/app/app/ai/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - retinasense-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: retinasense-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - retinasense-net
+
+volumes:
+  postgres_data:
+  uploads_data:
+  reports_data:
+  model_data:
+
+networks:
+  retinasense-net:
+    driver: bridge

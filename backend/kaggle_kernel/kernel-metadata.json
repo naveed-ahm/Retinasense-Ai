@@ -1,0 +1,16 @@
+{
+  "id": "naveed03/retinasense-training",
+  "title": "RetinaSense Training",
+  "code_file": "train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "false",
+  "competition_sources": [],
+  "dataset_sources": [
+    "ahmetselukkren/fundus-dataset",
+    "rohitrawat25/combined-fundus-images"
+  ],
+  "kernel_sources": []
+}

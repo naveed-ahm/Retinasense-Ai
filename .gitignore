@@ -1,0 +1,35 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+vite-dev.log
+
+# Logs & local artifacts
+*.log
+uvicorn.log
+
+# Databases & secrets
+backend/retinasense.db
+*.db-wal
+*.db-shm
+
+# Agent artifacts
+.qodo/
+
+# Build/output artifacts
+backend/2026-08-12
+backend/api_verify_out.txt
+backend/app/ai/models/logs/
+backend/app/ai/models/evaluation/verification_report.json
+backend/app/ai/models/training_log.csv

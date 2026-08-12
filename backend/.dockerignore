@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+.env
+retinasense.db
+.git
+.gitignore
+uploads
+reports
+app/ai/models
+*.keras
+*.h5
