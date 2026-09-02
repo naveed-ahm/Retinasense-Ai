@@ -11,6 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.ai.inference import ModelLoader
 from app.services.ai_service import save_upload
+from app.services.fundus_validator import INVALID_FUNDUS_MESSAGE, is_fundus_image
 from app.schemas.analysis import AnalysisResponse, PatientSummary, DiagnosisResult, ProbabilityItem, Finding, Recommendation
 from app.config import settings
 
@@ -78,6 +79,10 @@ async def build_analysis(image_bytes: bytes, filename: str) -> dict:
         raise HTTPException(status_code=400, detail="File is not a valid image")
 
     image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if not is_fundus_image(image_rgb):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=INVALID_FUNDUS_MESSAGE)
+
     loader = _get_model()
     result = await run_in_threadpool(loader.predict, image_rgb)
 

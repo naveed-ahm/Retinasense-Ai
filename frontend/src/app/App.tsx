@@ -1886,6 +1886,7 @@ function ScanPage({ onNav, details, onDetailsChange, onScanComplete }: {
       image: imageFile,
     }).then(id => {
       if (id) onScanComplete(id);
+      else setShowScanAnim(false);
     });
   };
 
