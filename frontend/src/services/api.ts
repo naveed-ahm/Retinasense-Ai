@@ -155,6 +155,42 @@ export const scansApi = {
     }>("GET", `/scans/${scanId}/report`),
 };
 
+// ─── MATLAB image-analysis add-on (independent of disease inference) ──────────
+export interface MatlabQualityResult {
+  quality_score: number;
+  brightness_score: number;
+  contrast_score: number;
+  sharpness_score: number;
+  fov_score: number;
+  status: string;
+}
+
+export interface MatlabFeatureResult {
+  mean_intensity?: number;
+  contrast?: number;
+  bright_region_percentage?: number;
+  dark_region_percentage?: number;
+  vessel_density?: number;
+  retinal_field_area?: number;
+  [key: string]: number | undefined;
+}
+
+export interface MatlabAnalysisResult {
+  matlab_available: boolean;
+  matlab_status?: string;
+  quality?: MatlabQualityResult | null;
+  enhanced_image?: string | null;
+  features?: MatlabFeatureResult | null;
+}
+
+export const matlabApi = {
+  analyze: (scanId: string) => {
+    const fd = new FormData();
+    fd.append("scan_id", scanId);
+    return upload<MatlabAnalysisResult>("/matlab/analyze", fd);
+  },
+};
+
 // ─── Analysis (latest) ────────────────────────────────────────────────────────
 export const analysisApi = {
   getLatest: () => request<any>("GET", "/analysis/latest"),

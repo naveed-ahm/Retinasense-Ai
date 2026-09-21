@@ -11,7 +11,7 @@ from app.database import init_db
 from app.config import settings
 from app.routers import (
     auth, dashboard, patients, scans, analysis, reports, analytics,
-    settings as settings_router, predict, images,
+    settings as settings_router, predict, images, matlab,
 )
 
 logger = logging.getLogger("retinasense")
@@ -86,6 +86,7 @@ app.include_router(analytics.router)
 app.include_router(settings_router.router)
 app.include_router(predict.router)
 app.include_router(images.router)
+app.include_router(matlab.router)
 
 
 @app.get("/api/health")

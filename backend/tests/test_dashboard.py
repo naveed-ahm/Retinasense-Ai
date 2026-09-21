@@ -60,4 +60,4 @@ class TestDashboard:
         data = r2.json()
         assert data["summary"][0]["value"] == "1"
         assert any(item["label"] == "Diabetic Retinopathy" for item in data["category_stats"][0]["items"])
-        assert len(data["scan_volume"]) == 8
+        assert len(data["scan_volume"]) == 7

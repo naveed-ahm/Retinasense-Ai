@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, memo, useMemo } from "react";
-import { useAuth, useDashboard, usePatients, useScan, useAnalysis, useReport, useSettings, useBlobImage } from "../services/hooks";
+import { useAuth, useDashboard, usePatients, useScan, useAnalysis, useMatlabAnalysis, useReport, useSettings, useBlobImage } from "../services/hooks";
 import { AUTH_EXPIRED_EVENT, reportsApi, patientsApi } from "../services/api";
 import { toast, Toaster } from "sonner";
 import {
@@ -12,7 +12,7 @@ import {
   CheckCircle, AlertTriangle, XCircle, Download, Filter, MoreHorizontal,
   Brain, Microscope, HeartPulse, ChevronRight, Menu, X,
   LogOut, User, Lock, Moon, Sun, Mail, Phone, Building, Plus,
-  RefreshCw, Calendar, Layers, Target, MessageSquare, Printer, Trash2
+  RefreshCw, Calendar, Layers, Target, MessageSquare, Printer, Trash2, Sparkles, ArrowRight
 } from "lucide-react";
 
 // ─── Icon Map (API returns icon names as strings) ────────────────────────────
@@ -2058,6 +2058,117 @@ function ScanPage({ onNav, details, onDetailsChange, onScanComplete }: {
   );
 }
 
+// ─── MATLAB Image Analysis (independent optional add-on) ──────────────────────
+function MatlabImageAnalysis({ scanId, originalImage }: { scanId: string | null; originalImage?: string | null }) {
+  const { result, loading } = useMatlabAnalysis(scanId);
+  const originalImg = useBlobImage(originalImage);
+  const enhancedImg = useBlobImage(result?.enhanced_image ?? null);
+  const quality = result?.quality;
+  const features = result?.features;
+  const featureEntries = features
+    ? Object.entries(features).filter(([, value]) => typeof value === "number" && Number.isFinite(value))
+    : [];
+
+  const scoreStatus = (score: number) => score >= 50 ? "PASS" : "CHECK";
+  const formatFeatureName = (name: string) => name.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const formatFeatureValue = (name: string, value: number) => name.includes("percentage") || name.includes("density") ? `${value.toFixed(1)}%` : value.toFixed(2);
+
+  return (
+    <section className="bg-card rounded-2xl border border-border p-5 shadow-sm" aria-labelledby="matlab-analysis-title">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><Sparkles size={16} /></div>
+          <div>
+            <h4 id="matlab-analysis-title" className="font-semibold text-foreground text-sm">MATLAB Image Analysis</h4>
+            <p className="text-xs text-muted-foreground">Independent image-processing add-on</p>
+          </div>
+        </div>
+        {loading && <Badge variant="info">Running</Badge>}
+        {!loading && result?.matlab_available && <Badge variant="success">Available</Badge>}
+      </div>
+
+      {loading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-16 w-full" />)}
+        </div>
+      ) : !result?.matlab_available ? (
+        <p className="text-sm text-muted-foreground bg-muted/50 border border-border rounded-xl px-4 py-3">
+          {result?.matlab_status || "MATLAB analysis unavailable"}. Disease prediction and Grad-CAM are unaffected.
+        </p>
+      ) : (
+        <div className="space-y-5">
+          {quality && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-sm font-semibold text-foreground">Image Quality</h5>
+                <Badge variant={quality.status?.toUpperCase() === "GOOD" ? "success" : "warning"}>{quality.status || "ASSESSED"}</Badge>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3">
+                  <p className="text-lg font-bold text-emerald-700">{Math.round(quality.quality_score)}%</p>
+                  <p className="text-xs text-emerald-800">Quality Score</p>
+                </div>
+                {[
+                  ["Brightness", quality.brightness_score],
+                  ["Contrast", quality.contrast_score],
+                  ["Sharpness", quality.sharpness_score],
+                  ["FOV Coverage", quality.fov_score],
+                ].map(([label, score]) => (
+                  <div key={String(label)} className="bg-muted/50 border border-border rounded-xl p-3">
+                    <p className="text-sm font-semibold text-foreground">{Math.round(Number(score))}%</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className={cn("text-[11px] font-semibold mt-1", Number(score) >= 50 ? "text-emerald-600" : "text-amber-600")}>{scoreStatus(Number(score))}</p>
+                  </div>
+                ))}
+                <div className="bg-muted/50 border border-border rounded-xl p-3">
+                  <p className="text-sm font-semibold text-foreground">{quality.status || "—"}</p>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {result.enhanced_image && (
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
+                <h5 className="text-sm font-semibold text-foreground">MATLAB Enhancement</h5>
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                  <span>Original</span><ArrowRight size={13} aria-hidden="true" /><span>Enhanced for visualization</span>
+                </span>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {[["Original Image", originalImg.src, originalImg.error], ["MATLAB Enhanced Image", enhancedImg.src, enhancedImg.error]].map(([label, src, error]) => (
+                  <div key={String(label)} className="rounded-xl overflow-hidden border border-border bg-slate-900">
+                    <div className="aspect-square flex items-center justify-center text-slate-400">
+                      {src ? <img src={String(src)} alt={String(label)} className="w-full h-full object-contain" /> : <span className="text-xs px-4 text-center">{error ? String(error) : "Image unavailable"}</span>}
+                    </div>
+                    <p className="bg-card px-3 py-2 text-xs font-medium text-foreground">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {featureEntries.length > 0 && (
+            <div>
+              <h5 className="text-sm font-semibold text-foreground mb-3">Quantitative Analysis</h5>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {featureEntries.map(([name, value]) => (
+                  <div key={name} className="bg-muted/50 border border-border rounded-xl p-3">
+                    <p className="text-sm font-semibold text-foreground">{formatFeatureValue(name, value as number)}</p>
+                    <p className="text-xs text-muted-foreground leading-snug">{formatFeatureName(name)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Quality and quantitative values are image-processing measurements only; they are not clinical diagnoses.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─── Page: AI Analysis ────────────────────────────────────────────────────────
 function AnalysisPage({ onNav, details, scanId }: { onNav: (p: Page) => void; details: PatientDetails; scanId: string | null }) {
   const [activeTab, setActiveTab] = useState<"original" | "heatmap">("original");
@@ -2294,6 +2405,8 @@ function AnalysisPage({ onNav, details, scanId }: { onNav: (p: Page) => void; de
           )}
         </div>
       </div>
+
+      <MatlabImageAnalysis scanId={scanId} originalImage={analysis?.image_url ?? null} />
 
       {/* Recommendations */}
       <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">

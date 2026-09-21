@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { setToken as setApiToken, authApi, dashboardApi, patientsApi, scansApi, settingsApi, imagesApi } from "./api";
+import { setToken as setApiToken, authApi, dashboardApi, patientsApi, scansApi, settingsApi, imagesApi, matlabApi, type MatlabAnalysisResult } from "./api";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []) {
@@ -236,6 +236,37 @@ export function useAnalysis(scanId: string | null) {
   }, [scanId]);
 
   return { analysis, loading, error };
+}
+
+// ─── MATLAB image-analysis add-on ─────────────────────────────────────────────
+// This deliberately has no connection to the existing analysis hook: a missing
+// MATLAB installation is a neutral optional state, never an AI-analysis failure.
+export function useMatlabAnalysis(scanId: string | null) {
+  const [result, setResult] = useState<MatlabAnalysisResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setResult(null);
+    if (!scanId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    matlabApi.analyze(scanId)
+      .then((data) => { if (!cancelled) setResult(data); })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setResult({ matlab_available: false, matlab_status: error.message || "MATLAB analysis unavailable" });
+        }
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [scanId]);
+
+  return { result, loading };
 }
 
 // ─── Authenticated image (blob → object URL) ─────────────────────────────────────
